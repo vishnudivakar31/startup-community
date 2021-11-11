@@ -29,7 +29,7 @@ public class AccountUserController {
     public Uni<Response> createAccountUser(AccountUser accountUser) {
         log.info("creating account user for {}", accountUser);
         return accountUserService.createAccountUser(accountUser)
-                .map(item -> Response.created(URI.create("/user/" + item.getId())).entity(Map.of("message", "welcome to startup-community")).build())
+                .map(item -> Response.created(URI.create("/user/" + item.getId())).entity(item).build())
                 .onFailure().retry().atMost(2)
                 .onFailure().invoke(failure -> {
                     log.error(failure.getLocalizedMessage());

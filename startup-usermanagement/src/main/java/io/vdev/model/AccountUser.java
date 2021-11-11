@@ -1,5 +1,7 @@
 package io.vdev.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import lombok.Data;
 import lombok.Getter;
@@ -29,4 +31,14 @@ public class AccountUser extends PanacheEntityBase {
     private Date updatedAt;
     @Column(name = "account_user_type")
     private AccountUserType accountUserType;
+
+    @JsonIgnore
+    public String getPassword() {
+        return password;
+    }
+
+    @JsonProperty
+    public void setPassword(String password) {
+        this.password = password;
+    }
 }
