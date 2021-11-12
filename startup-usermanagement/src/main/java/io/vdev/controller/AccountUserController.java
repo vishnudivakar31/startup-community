@@ -1,14 +1,22 @@
 package io.vdev.controller;
 
+import io.quarkus.security.jpa.Roles;
 import io.smallrye.mutiny.Uni;
 import io.vdev.model.AccountUser;
+import io.vdev.model.AccountUserType;
+import io.vdev.model.LoginRequest;
 import io.vdev.service.AccountUserService;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.jwt.Claim;
+import org.eclipse.microprofile.jwt.Claims;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.jboss.resteasy.reactive.RestPath;
 
+import javax.annotation.security.PermitAll;
+import javax.annotation.security.RolesAllowed;
+import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import javax.ws.rs.*;
-import javax.ws.rs.core.Application;
 import javax.ws.rs.core.Response;
 
 import java.net.URI;
@@ -18,13 +26,19 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 @Slf4j
 @Path("/user")
+@RequestScoped
 public class AccountUserController {
     @Inject
     private AccountUserService accountUserService;
 
+    @Claim(standard = Claims.preferred_username)
+    private String jwtUsername;
+
+
     @POST
     @Produces(APPLICATION_JSON)
     @Consumes(APPLICATION_JSON)
+    @PermitAll
     @Path("/sign-up")
     public Uni<Response> createAccountUser(AccountUser accountUser) {
         log.info("creating account user for {}", accountUser);
@@ -40,13 +54,34 @@ public class AccountUserController {
     @GET
     @Produces(APPLICATION_JSON)
     @Consumes(APPLICATION_JSON)
+    @RolesAllowed({"COMPANY_ADMIN","FREELANCER"})
     @Path("/{id}")
     public Uni<Response> getAccountUser(@RestPath Long id) {
         log.info("getting user for {}", id);
-        return accountUserService.getAccountUser(id)
+        log.info("username: " + jwtUsername);
+        return accountUserService.getAccountUser(id, jwtUsername)
                 .onItem()
                 .transform(item -> item == null ?
                         Response.status(Response.Status.NOT_FOUND).entity(Map.of("message", "user account not found")).build() :
                         Response.ok().entity(item).build());
     }
+
+    @POST
+    @Produces(APPLICATION_JSON)
+    @Consumes(APPLICATION_JSON)
+    @PermitAll
+    @Path("/login")
+    public Uni<Response> login(LoginRequest loginRequest) {
+        log.info("login for username: " + loginRequest.getUsername());
+        return accountUserService.loginWithUsernameAndPassword(loginRequest.getUsername(), loginRequest.getPassword())
+                .onItem()
+                .transform(item -> {
+                    if (item != null)
+                        return Response.ok().header("Authorization", "Bearer " + item).build();
+                    else
+                        return Response.status(Response.Status.UNAUTHORIZED).build();
+                });
+    }
+
+
 }
