@@ -1,15 +1,12 @@
 package io.vdev.controller;
 
-import io.quarkus.security.jpa.Roles;
 import io.smallrye.mutiny.Uni;
 import io.vdev.model.AccountUser;
-import io.vdev.model.AccountUserType;
 import io.vdev.model.LoginRequest;
 import io.vdev.service.AccountUserService;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.jwt.Claim;
 import org.eclipse.microprofile.jwt.Claims;
-import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.jboss.resteasy.reactive.RestPath;
 
 import javax.annotation.security.PermitAll;
@@ -81,6 +78,34 @@ public class AccountUserController {
                     else
                         return Response.status(Response.Status.UNAUTHORIZED).build();
                 });
+    }
+
+    @PUT
+    @Produces(APPLICATION_JSON)
+    @Consumes(APPLICATION_JSON)
+    @RolesAllowed({"COMPANY_ADMIN","FREELANCER"})
+    @Path("/update")
+    public Uni<Response> updateAccountUser(AccountUser accountUser) {
+        log.info("update user account");
+        return accountUserService.updateAccountUser(accountUser)
+                .map(item -> Response.created(URI.create("/user/" + item.getId())).entity(item).build())
+                .onFailure().retry().atMost(2)
+                .onFailure().invoke(failure -> {
+                    log.error(failure.getLocalizedMessage());
+                    Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(failure.getLocalizedMessage()).build();
+                });
+    }
+
+    @DELETE
+    @Produces(APPLICATION_JSON)
+    @Consumes(APPLICATION_JSON)
+    @RolesAllowed({"COMPANY_ADMIN","FREELANCER"})
+    @Path("/{id}")
+    public Uni<Response> deleteAccountUser(@RestPath Long id) {
+        log.info("delete user account with ID: {}", id);
+        return accountUserService.deleteUserAccount(id)
+                .onItem().transform(status -> status ? Response.ok(Map.of("message", "deleted")).build() :
+                        Response.ok(Map.of("message", "not deleted. try again later.")).build());
     }
 
 

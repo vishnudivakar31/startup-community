@@ -50,4 +50,21 @@ public class AccountUserService {
                     return null;
                 });
     }
+
+    public Uni<AccountUser> updateAccountUser(AccountUser accountUser) {
+        accountUser.setUpdatedAt(new Date());
+        return accountUser.persistAndFlush();
+    }
+
+    public Uni<Boolean> deleteUserAccount(Long id) {
+        return AccountUser.<AccountUser>findById(id)
+                .onItem().transform(accountUser -> {
+                    if (accountUser != null) {
+                        accountUser.delete();
+                        accountUser.flush();
+                        return true;
+                    }
+                    return false;
+                });
+    }
 }
